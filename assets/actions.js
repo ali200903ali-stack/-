@@ -289,6 +289,7 @@ document.addEventListener('keydown',function(ev){
  if((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='k'){ev.preventDefault();document.querySelector('#list-search')?.focus();return}
 });
 document.addEventListener('DOMContentLoaded',function(){
+ if('serviceWorker' in navigator && window.isSecureContext){navigator.serviceWorker.register('./service-worker.js').catch(function(){})}
  var el=document.getElementById('app');
  if(el){
   api('bootstrap').then(function(data){
