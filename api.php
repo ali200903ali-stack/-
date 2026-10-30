@@ -219,7 +219,23 @@ try {
                 $sql.=' ORDER BY i.id DESC LIMIT 500';
                 ns_json(['ok'=>true,'data'=>ns_rows($sql,$params)]);
             }
-            if (in_array($type,['products','customers','suppliers','accounts','branches'],true)) {
+            if ($type === 'inventory' || $type === 'products') {
+                // "inventory" is the client-side route; "products" is a supported
+                // backward-compatible API alias. Never interpolate arbitrary table names.
+                $data=ns_rows("SELECT p.*,
+                    (SELECT il.price FROM invoice_lines il
+                     JOIN invoices i ON i.id=il.invoice_id
+                     WHERE il.product_id=p.id AND i.kind='purchase' AND i.status='posted'
+                     ORDER BY i.date DESC,i.id DESC,il.id DESC LIMIT 1) last_purchase_price,
+                    (SELECT s.name FROM invoice_lines il
+                     JOIN invoices i ON i.id=il.invoice_id
+                     JOIN suppliers s ON s.id=i.supplier_id
+                     WHERE il.product_id=p.id AND i.kind='purchase' AND i.status='posted'
+                     ORDER BY i.date DESC,i.id DESC,il.id DESC LIMIT 1) last_supplier_name
+                    FROM products p ORDER BY p.id DESC LIMIT 1000");
+                ns_json(['ok'=>true,'data'=>$data]);
+            }
+            if (in_array($type,['customers','suppliers','accounts','branches'],true)) {
                 $data=ns_rows('SELECT * FROM '.$type.' ORDER BY id DESC LIMIT 1000');
                 ns_json(['ok'=>true,'data'=>$data]);
             }
