@@ -31,14 +31,14 @@ ns_query('INSERT INTO products(sku,name,unit,price,cost,stock,min_stock,track_st
     ['SMOKE001','صنف اختبار','حبة','12.00','5.00','10.000',1,1]);
 assertEq((int)ns_one('SELECT COUNT(*) n FROM products')['n'],1,'product seeded');
 
-$open=ns_post_manual_journal($u,[
-    'date'=>'2026-10-29','description'=>'Opening stock','branch_id'=>1,
-    'lines'=>[
-        ['account_id'=>ns_account('120'),'debit'=>50,'credit'=>0],
-        ['account_id'=>ns_account('300'),'debit'=>0,'credit'=>50],
-    ]
+$pdo->beginTransaction();
+$openNumber=ns_sequence('OPEN');
+ns_journal_post($u,'opening',1,$openNumber,'2026-10-29','Opening inventory',1,[
+    ns_line(ns_account('120'),5000),
+    ns_line(ns_account('300'),0,5000)
 ]);
-assertEq(str_starts_with($open['number'],'JV-'),true,'opening manual journal');
+$pdo->commit();
+assertEq(str_starts_with($openNumber,'OPEN-'),true,'opening source journal');
 
 $sale=ns_save_invoice($u,[
     'kind'=>'sale','date'=>'2026-10-29','branch_id'=>1,'customer_id'=>2,
@@ -92,6 +92,14 @@ $return=ns_save_invoice($u,[
 ns_post_invoice($u,$return['id']);
 assertEq(ns_one('SELECT stock FROM products WHERE id=1')['stock'],'10.000','cash refund returns item to stock');
 
+$manual=ns_post_manual_journal($u,[
+    'date'=>'2026-10-29','description'=>'Operational expense','branch_id'=>1,
+    'lines'=>[
+        ['account_id'=>ns_account('500'),'debit'=>2.5,'credit'=>0],
+        ['account_id'=>ns_account('101'),'debit'=>0,'credit'=>2.5]
+    ]
+]);
+assertEq(str_starts_with($manual['number'],'JV-'),true,'manual journal on allowed accounts');
 $bal=sumBalance();
 assertEq($bal['debit'],$bal['credit'],'debits equal credits across ledger');
 assertEq(ns_one("SELECT COUNT(*) n FROM journal_entries WHERE source='sale'")['n'],2,'two sales produced two journal entries');
