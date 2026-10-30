@@ -24,57 +24,23 @@ jobs:
       - name: Install Android SDK
         shell: bash
         run: |
-          SDK_TOOL=$(find "${ANDROID_HOME}/cmdline-tools" -type f -name sdkmanager | head -n 1)
+          SDK_TOOL=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)
           if [ -z "$SDK_TOOL" ]; then echo "Android SDK cmdline tools missing"; exit 1; fi
           "$SDK_TOOL" --install "platforms;android-35" "build-tools;35.0.0"
+      - name: Validate bundled preview JavaScript
+        run: node --check clients/android/app/src/main/assets/demo.js
       - name: Build debug APK
         working-directory: clients/android
         run: gradle assembleDebug --no-daemon
-      - name: Verify self-contained preview is in the APK
+      - name: Verify self-contained preview in APK
+        shell: bash
         run: |
           APK=$(find clients/android/app/build/outputs/apk/debug -name '*.apk' -print -quit)
-          unzip -Z1 "$APK" | grep -q '^assets/demo.html
-        with:
-          name: NineSoft-Android-debug
-          path: clients/android/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 30
-
-          unzip -Z1 "$APK" | grep -q '^assets/demo.js
-        with:
-          name: NineSoft-Android-debug
-          path: clients/android/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 30
-
-          unzip -Z1 "$APK" | grep -q '^assets/assets/core.js
-        with:
-          name: NineSoft-Android-debug
-          path: clients/android/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 30
-
-          unzip -Z1 "$APK" | grep -q '^assets/assets/pages.js
-        with:
-          name: NineSoft-Android-debug
-          path: clients/android/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 30
-
-          unzip -Z1 "$APK" | grep -q '^assets/assets/style.css
-        with:
-          name: NineSoft-Android-debug
-          path: clients/android/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 30
-
-          unzip -Z1 "$APK" | grep -q '^assets/assets/logo.svg
-        with:
-          name: NineSoft-Android-debug
-          path: clients/android/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 30
-
+          test -n "$APK"
+          unzip -Z1 "$APK" > /tmp/ninesoft_apk_files.txt
+          for asset in demo.html demo.js assets/core.js assets/pages.js assets/actions.js assets/style.css assets/logo.svg; do
+            grep -Fxq "assets/$asset" /tmp/ninesoft_apk_files.txt || { echo "Missing $asset"; exit 1; }
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: NineSoft-Android-debug
