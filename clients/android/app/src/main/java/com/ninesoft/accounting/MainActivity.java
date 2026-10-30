@@ -1,6 +1,7 @@
 package com.ninesoft.accounting;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.Intent;
 import android.net.Uri;
@@ -19,14 +20,20 @@ import android.webkit.WebSettings;
 import android.widget.Toast;
 import java.net.URI;
 import java.net.URISyntaxException;
+import android.graphics.Color;
+import android.view.View;
 
 public final class MainActivity extends Activity {
     private WebView web;
     private String serverUrl;
     private boolean setupMode;
+    private boolean localMode;
     private static final String PREFS="ninesoft_settings";
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        getWindow().setStatusBarColor(Color.rgb(241,248,253));
+        getWindow().setNavigationBarColor(Color.rgb(241,248,253));
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         web=new WebView(this);
         setContentView(web);
         WebSettings settings=web.getSettings();
@@ -35,11 +42,13 @@ public final class MainActivity extends Activity {
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setAllowContentAccess(false);
+        settings.setAllowFileAccessFromFileURLs(false);
+        settings.setAllowUniversalAccessFromFileURLs(false);
         web.setWebChromeClient(new WebChromeClient());
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri dest=request.getUrl();
-                if(setupMode)return false;
+                if(localMode)return !dest.toString().startsWith("file:///android_asset/");
                 if(serverUrl!=null && dest.toString().startsWith(serverUrl+"/"))return false;
                 if("https".equals(dest.getScheme())) {
                     startActivity(new Intent(Intent.ACTION_VIEW,dest));
@@ -69,7 +78,7 @@ public final class MainActivity extends Activity {
             } catch(Exception ex) {Toast.makeText(this,"تعذر التنزيل",Toast.LENGTH_LONG).show();}
         });
         String saved=getPreferences(MODE_PRIVATE).getString(PREFS,null);
-        if(saved==null || normalizeUrl(saved)==null)openSetup();
+        if(saved==null || normalizeUrl(saved)==null)openDemo();
         else openServer(saved);
     }
     private String normalizeUrl(String raw) {
@@ -83,8 +92,27 @@ public final class MainActivity extends Activity {
             return base+path;
         } catch(URISyntaxException ex) {return null;}
     }
+    /** Isolated preview: bundled web assets and fictional local data, no server. */
+    private void openDemo() {
+        localMode=true;
+        setupMode=false;
+        serverUrl=null;
+        web.removeJavascriptInterface("NineSoftSetup");
+        web.removeJavascriptInterface("NineSoftDemo");
+        web.getSettings().setAllowFileAccess(true);
+        web.addJavascriptInterface(new Object() {
+            @JavascriptInterface public void openSetup() {
+                runOnUiThread(()->MainActivity.this.openSetup());
+            }
+        },"NineSoftDemo");
+        web.loadUrl("file:///android_asset/demo.html");
+    }
     private void openSetup() {
         setupMode=true;
+        localMode=true;
+        serverUrl=null;
+        web.removeJavascriptInterface("NineSoftDemo");
+        web.removeJavascriptInterface("NineSoftSetup");
         web.getSettings().setAllowFileAccess(true);
         web.addJavascriptInterface(new Object() {
             @JavascriptInterface public void configure(String input) {
@@ -95,20 +123,31 @@ public final class MainActivity extends Activity {
                     openServer(url);
                 });
             }
+            @JavascriptInterface public void preview() {
+                runOnUiThread(()->MainActivity.this.openDemo());
+            }
         },"NineSoftSetup");
         web.loadUrl("file:///android_asset/setup.html");
     }
     private void openServer(String input) {
         serverUrl=normalizeUrl(input);
-        if(serverUrl==null){openSetup();return;}
+        if(serverUrl==null){openDemo();return;}
+        localMode=false;
         setupMode=false;
         web.removeJavascriptInterface("NineSoftSetup");
+        web.removeJavascriptInterface("NineSoftDemo");
         web.getSettings().setAllowFileAccess(false);
         web.loadUrl(serverUrl+"/index.php");
     }
     @Override public void onBackPressed() {
-        if(web.canGoBack()&&!setupMode)web.goBack();
-        else super.onBackPressed();
+        if(localMode && setupMode){openDemo();return;}
+        if(web.canGoBack() && !localMode){web.goBack();return;}
+        new AlertDialog.Builder(this).setTitle("NineSoft")
+            .setItems(new String[]{"فتح تجربة NineSoft","تغيير رابط Hostinger","إغلاق التطبيق"},(dialog,choice)->{
+                if(choice==0)openDemo();
+                else if(choice==1)openSetup();
+                else finish();
+            }).show();
     }
     @Override protected void onDestroy() {
         if(web!=null){web.destroy();web=null;}

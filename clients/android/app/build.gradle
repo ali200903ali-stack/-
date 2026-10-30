@@ -7,8 +7,8 @@ android {
         applicationId 'com.ninesoft.accounting'
         minSdk 26
         targetSdk 35
-        versionCode 1
-        versionName '1.0.0'
+        versionCode 2
+        versionName '1.0.1'
     }
     buildTypes {
         release {
@@ -19,4 +19,20 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+}
+
+
+// Include only the five approved shared frontend files in the offline APK preview.
+// Server-side PHP, SQL, source files, and configuration are never packaged.
+def demoAssetDir = layout.buildDirectory.dir('generated/ninesoft-demo-assets')
+def copyDemoAssets = tasks.register('copyDemoAssets', Copy) {
+    from(rootProject.file('../../assets')) {
+        include 'core.js', 'pages.js', 'actions.js', 'style.css', 'logo.svg'
+        into 'assets'
+    }
+    into(demoAssetDir)
+}
+android.sourceSets.main.assets.srcDirs += demoAssetDir.get().asFile
+tasks.matching { it.name.startsWith('merge') && it.name.endsWith('Assets') }.configureEach {
+    dependsOn(copyDemoAssets)
 }
