@@ -146,14 +146,19 @@ try {
                 ns_branch($u,$branch);
                 $pass=(string)($body['password']??'');
                 if ($id && $id===(int)$u['id'] && $role!=='admin') ns_fail('لا يمكن إزالة صلاحية مديرك الحالي');
+                // Validate before ANY write: a rejected password must not leave a new
+                // role, email or branch saved (a failed request is atomic).
+                if (($id && $pass !== '' && strlen($pass) < 12) || (!$id && strlen($pass) < 12)) {
+                    ns_fail('كلمة المرور يجب أن تكون 12 حرفاً على الأقل');
+                }
+                if ($pass !== '' && strlen($pass) > 500) ns_fail('كلمة المرور طويلة جداً');
                 if ($id) {
+                    if (!ns_one('SELECT id FROM users WHERE id=?',[$id])) ns_fail('المستخدم غير موجود',404);
                     ns_query('UPDATE users SET name=?,email=?,role=?,branch_id=? WHERE id=?',[$name,$email,$role,$branch,$id]);
                     if ($pass !== '') {
-                        if (strlen($pass)<12) ns_fail('كلمة المرور يجب أن تكون 12 حرفاً على الأقل');
                         ns_query('UPDATE users SET password_hash=? WHERE id=?',[password_hash($pass,PASSWORD_DEFAULT),$id]);
                     }
                 } else {
-                    if (strlen($pass)<12) ns_fail('كلمة مرور المستخدم الجديد يجب أن تكون 12 حرفاً على الأقل');
                     ns_query('INSERT INTO users(name,email,password_hash,role,branch_id) VALUES(?,?,?,?,?)',
                         [$name,$email,password_hash($pass,PASSWORD_DEFAULT),$role,$branch]);
                     $id=(int)ns_db()->lastInsertId();
