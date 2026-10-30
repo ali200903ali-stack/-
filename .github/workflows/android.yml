@@ -17,15 +17,15 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Verify Android SDK
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          sdkmanager --version
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.13"
       - name: Install Android SDK
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        shell: bash
+        run: |
+          SDK_TOOL=$(find "${ANDROID_HOME}/cmdline-tools" -type f -name sdkmanager | head -n 1)
+          if [ -z "$SDK_TOOL" ]; then echo "Android SDK cmdline tools missing"; exit 1; fi
+          "$SDK_TOOL" --install "platforms;android-35" "build-tools;35.0.0"
       - name: Build debug APK
         working-directory: clients/android
         run: gradle assembleDebug --no-daemon
