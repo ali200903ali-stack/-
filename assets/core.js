@@ -97,7 +97,7 @@ async function loadPage(page){
   if(page==='dashboard')NS.stats=await api('dashboard',undefined,period());
   else if(['sales','purchases','returns','inventory','customers','suppliers','accounts','branches','users','journal','vouchers'].includes(page))NS.rows=await api('list',undefined,Object.assign({type:page},period()));
   else if(page==='cashbox')NS.report=await api('report',undefined,Object.assign({type:'cashbox'},period()));
-  else if(page==='reports')NS.report=await api('report',undefined,Object.assign({type:NS.currentReport},period()));
+  else if(page==='reports')await loadAccountReport();
   else if(page==='quarantine_review'){
    var result=await Promise.all(['sales','purchases','returns'].map(function(t){return api('list',undefined,Object.assign({type:t},period()))}));
    NS.rows=result.flat().filter(function(x){return x.status==='draft'});
