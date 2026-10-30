@@ -49,6 +49,8 @@ try {
 <div id="app" class="app-loading"><div class="spinner"></div><p>جاري تحميل مساحة العمل...</p></div>
 <?php endif; ?>
 <script>window.NS_BOOT = <?= json_encode(['csrf'=>$_SESSION['csrf'],'user'=>$user], JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>;</script>
-<script src="assets/app.js?v=1" defer></script>
+<script src="assets/core.js?v=1" defer></script>
+<script src="assets/pages.js?v=1" defer></script>
+<script src="assets/actions.js?v=1" defer></script>
 </body>
 </html>
