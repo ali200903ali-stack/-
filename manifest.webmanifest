@@ -1,0 +1,37 @@
+{
+  "name": "NineSoft | ناين سوفت للحلول المالية",
+  "short_name": "NineSoft",
+  "lang": "ar",
+  "dir": "rtl",
+  "description": "المحاسبة والمبيعات والمخزون",
+  "start_url": "./index.php",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "standalone"
+  ],
+  "background_color": "#f1f8fd",
+  "theme_color": "#09254b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "assets/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "لوحة القيادة",
+      "url": "./index.php",
+      "icons": [
+        {
+          "src": "assets/logo.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
+}
