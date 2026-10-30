@@ -293,6 +293,40 @@ try {
                 if ($type==='cashbox') $rows=array_values(array_filter($rows,fn($r)=>in_array($r['code'],['101','102'],true)));
                 ns_json(['ok'=>true,'data'=>$rows]);
             }
+            if ($type === 'account_statement') {
+                // Unified general-ledger statement: any asset, liability, equity,
+                // revenue or expense account; opening + movement + running balance.
+                $accountId=ns_int($_GET['account_id']??0,1);
+                $account=ns_one('SELECT id,code,name,type FROM accounts WHERE id=? AND active=1',[$accountId]);
+                if (!$account) ns_fail('الحساب غير موجود',404);
+                $openingSql='SELECT COALESCE(SUM(jl.debit-jl.credit),0) balance FROM journal_lines jl
+                    JOIN journal_entries j ON j.id=jl.journal_id
+                    WHERE jl.account_id=? AND j.date<?';
+                $openingParams=[$accountId,$from];
+                if ($filterBranch) {$openingSql.=' AND j.branch_id=?';$openingParams[]=$filterBranch;}
+                $opening=(float)(ns_one($openingSql,$openingParams)['balance']??0);
+                $movementSql='SELECT j.number,j.date,j.description,jl.debit,jl.credit
+                    FROM journal_lines jl JOIN journal_entries j ON j.id=jl.journal_id
+                    WHERE jl.account_id=? AND j.date BETWEEN ? AND ?';
+                $movementParams=[$accountId,$from,$to];
+                if ($filterBranch) {$movementSql.=' AND j.branch_id=?';$movementParams[]=$filterBranch;}
+                $movementSql.=' ORDER BY j.date,j.id,jl.id LIMIT 5001';
+                $movements=ns_rows($movementSql,$movementParams);
+                if (count($movements)>5000) ns_fail('تجاوز كشف الحساب 5000 حركة. اختر فترة أقصر.',422);
+                $balance=round($opening,2);
+                $rows=[[
+                    'number'=>'—','date'=>$from,'description'=>'رصيد افتتاحي قبل بداية الفترة',
+                    'debit'=>'0.00','credit'=>'0.00',
+                    'balance'=>number_format($balance,2,'.',''),'opening'=>true
+                ]];
+                foreach ($movements as $movement) {
+                    $balance=round($balance+(float)$movement['debit']-(float)$movement['credit'],2);
+                    $movement['balance']=number_format($balance,2,'.','');
+                    $movement['opening']=false;
+                    $rows[]=$movement;
+                }
+                ns_json(['ok'=>true,'data'=>$rows]);
+            }
             if ($type === 'stock') ns_json(['ok'=>true,'data'=>ns_rows('SELECT sku,name,category,unit,price,cost,stock,min_stock,(stock*cost) value FROM products WHERE active=1 ORDER BY name')]);
             if ($type === 'statement') {
                 $partyType=(string)($_GET['party_type']??'customer');
