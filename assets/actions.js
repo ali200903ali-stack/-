@@ -86,6 +86,10 @@ async function loadAccountReport(){
   NS.reportPartyId=NS.reportPartyId||arr[0]?.id||0;
   q.party_type=NS.reportPartyType;q.party_id=NS.reportPartyId;
  }
+ if(NS.currentReport==='account_statement'){
+  NS.reportAccountId=NS.reportAccountId||NS.data.accounts[0]?.id||0;
+  q.account_id=NS.reportAccountId;
+ }
  NS.report=await api('report',undefined,q);NS.loading=false;render();
 }
 async function doAction(a,target){
@@ -241,6 +245,11 @@ document.addEventListener('change',function(ev){
  }
  if(el.id==='report-party'){
   NS.reportPartyId=el.value;NS.loading=true;render();loadAccountReport().catch(function(e){setToast(e.message,true)});
+  return;
+ }
+ if(el.id==='report-account'){
+  NS.reportAccountId=el.value;NS.loading=true;render();
+  loadAccountReport().catch(function(e){NS.loading=false;render();setToast(e.message,true)});
   return;
  }
  if(NS.editor&&el.dataset.ed==='reference_id'){
