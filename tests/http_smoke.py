@@ -78,6 +78,28 @@ data=json.loads(output)
 assert status==200 and data["ok"] and data["data"]["id"]>2
 print("PASS: CSRF-protected customer creation")
 
+# Regression: a posted account cannot be reclassified, because doing so silently
+# restates historical profit/loss and the balance sheet.
+status,output=request("api.php?op=save_account",{"code":"699","name":"مصروف فحص التصنيف","type":"expense"},csrf)
+assert status==200, (status,output[:400])
+account_id=json.loads(output)["data"]["id"]
+status,output=request("api.php?op=post_journal",{
+    "date":"2026-10-29","branch_id":1,"description":"Classification integrity regression",
+    "lines":[{"account_id":account_id,"debit":4,"credit":0},
+             {"account_id":next(a["id"] for a in data["data"]["accounts"] if a["code"]=="101"),"debit":0,"credit":4}]
+},csrf)
+assert status==200, (status,output[:400])
+status,output=request("api.php?op=save_account",{
+    "id":account_id,"code":"699","name":"مصروف فحص التصنيف","type":"revenue"
+},csrf)
+assert status==409, (status,output[:400])
+print("PASS: posted account classification is immutable")
+status,output=request("api.php?op=save_account",{
+    "id":account_id,"code":"699","name":"مصروف فحص التصنيف - معدّل","type":"expense"
+},csrf)
+assert status==200, (status,output[:400])
+print("PASS: account description remains editable")
+
 status,output=request("api.php?op=logout",{},csrf)
 assert status==200 and json.loads(output)["ok"]
 status,output=request("api.php?op=bootstrap")
