@@ -7,7 +7,7 @@ try {
     $cfg = ns_config();
     $configured = !empty($cfg['db_name']) && !empty($cfg['db_user']);
     if (!$configured) throw new RuntimeException('انسخ config.example.php إلى config.local.php واضبط قاعدة البيانات ومفتاح التثبيت.');
-    if (empty($cfg['install_token']) || strlen((string)$cfg['install_token']) < 24) {
+    if (empty($cfg['install_token']) || strlen((string)$cfg['install_token']) < 32 || str_starts_with((string)$cfg['install_token'], 'REPLACE_')) {
         throw new RuntimeException('ضع install_token عشوائياً لا يقل عن 24 حرفاً داخل config.local.php أولاً.');
     }
     $pdo = ns_db();
