@@ -101,6 +101,23 @@ status,output=request("api.php?op=save_account",{
 assert status==200, (status,output[:400])
 print("PASS: account description remains editable")
 
+# Regression: invalid password on a user update must not partially change the role.
+status,output=request("api.php?op=save_user",{
+    "name":"Role integrity user","email":"rolecheck@example.test","role":"viewer",
+    "branch_id":1,"password":"long-password-for-test"
+},csrf)
+assert status==200, (status,output[:400])
+uid=json.loads(output)["data"]["id"]
+status,output=request("api.php?op=save_user",{
+    "id":uid,"name":"Role integrity user","email":"rolecheck@example.test",
+    "role":"accountant","branch_id":1,"password":"short"
+},csrf)
+assert status==422, (status,output[:400])
+status,output=request("api.php?op=list&type=users")
+assert status==200, (status,output[:400])
+assert next(u for u in json.loads(output)["data"] if u["id"]==uid)["role"]=="viewer", "Rejected update mutated account role"
+print("PASS: invalid credential update cannot change a user's role")
+
 status,output=request("api.php?op=logout",{},csrf)
 assert status==200 and json.loads(output)["ok"]
 status,output=request("api.php?op=bootstrap")
