@@ -77,7 +77,9 @@ try {
                 if (!is_finite($minStock) || $minStock<0) ns_fail('الحد الأدنى غير صالح');
                 $track=!empty($body['track_stock'])?1:0;
                 if ($id) {
-                    if (!ns_one('SELECT id FROM products WHERE id=?',[$id])) ns_fail('الصنف غير موجود');
+                    $oldProduct=ns_one('SELECT id,track_stock,stock FROM products WHERE id=?',[$id]);
+                    if (!$oldProduct) ns_fail('الصنف غير موجود');
+                    if ((int)$oldProduct['track_stock']!==$track) ns_fail('لا يمكن تغيير سياسة تتبع المخزون بعد إنشاء الصنف');
                     ns_query('UPDATE products SET sku=?,name=?,category=?,unit=?,price=?,min_stock=?,track_stock=? WHERE id=?',
                         [$sku,$name,$category,$unit,$price,$minStock,$track,$id]);
                     ns_audit($u,'updated','product',$id);
@@ -85,6 +87,7 @@ try {
                     $opening=round((float)($body['opening_qty']??0),3);
                     if (!is_finite($opening) || $opening<0 || $opening>1000000000) ns_fail('الكمية الافتتاحية غير صالحة');
                     $cost=ns_money($body['cost']??0);
+                    if (!$track && $opening>0) ns_fail('الأصناف غير المخزنية لا تقبل كمية افتتاحية');
                     $branch=ns_int($body['branch_id']??$u['branch_id']??1,1);
                     ns_branch($u,$branch);
                     $pdo=ns_db();$pdo->beginTransaction();
@@ -158,6 +161,11 @@ try {
                 if (!$name) ns_fail('اسم الشركة مطلوب');
                 $currency=ns_text($body['currency']??'YER',8);
                 if (!preg_match('/^[A-Z]{3}$/',$currency)) ns_fail('كود العملة غير صالح');
+                $currentCurrency=ns_one("SELECT value FROM settings WHERE name='currency'");
+                if ($currentCurrency && $currentCurrency['value']!==$currency &&
+                    (int)(ns_one('SELECT COUNT(*) AS n FROM journal_entries')['n']??0)>0) {
+                    ns_fail('لا يمكن تغيير عملة الشركة بعد وجود قيود مالية دون عملية تحويل مدققة');
+                }
                 foreach (['company'=>$name,'currency'=>$currency] as $key=>$v) ns_query(
                     'INSERT INTO settings(name,value) VALUES(?,?) ON DUPLICATE KEY UPDATE value=VALUES(value)',[$key,$v]
                 );
