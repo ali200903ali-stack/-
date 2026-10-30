@@ -66,11 +66,14 @@ function vouchersPage(){
 function reportPage(cashbox){
  var name=cashbox?'الصندوق والبنوك':'التقارير والتحليلات';
  var tab=cashbox?'cashbox':NS.currentReport;
- var titles={trial:'ميزان المراجعة',pnl:'الأرباح والخسائر',stock:'تقييم المخزون',cashbox:'أرصدة النقدية',statement:'كشف حساب طرف'};
+ var titles={trial:'ميزان المراجعة',pnl:'الأرباح والخسائر',stock:'تقييم المخزون',cashbox:'أرصدة النقدية',statement:'كشف حساب طرف',account_statement:'كشف حساب شامل'};
  var rows=[],cols=[];
  if(tab==='stock'){
   cols=['SKU','الصنف','الكمية','التكلفة','قيمة المخزون'];
   rows=(NS.report||[]).map(function(r){return '<tr><td class="num">'+E(r.sku)+'</td><td>'+E(r.name)+'</td><td class="num">'+F(r.stock,3)+'</td><td>'+M(r.cost)+'</td><td>'+M(r.value)+'</td></tr>'});
+ }else if(tab==='account_statement'){
+  cols=['رقم القيد','التاريخ','البيان','مدين','دائن','الرصيد (مدين + / دائن -)'];
+  rows=(NS.report||[]).map(function(r){return '<tr><td class="num">'+E(r.number)+'</td><td class="num">'+E(r.date)+'</td><td>'+E(r.description)+'</td><td>'+M(r.debit)+'</td><td>'+M(r.credit)+'</td><td>'+M(r.balance)+'</td></tr>'});
  }else if(tab==='statement'){
   cols=['رقم القيد','التاريخ','البيان','الحساب','مدين','دائن'];
   rows=(NS.report||[]).map(function(r){return '<tr><td class="num">'+E(r.number)+'</td><td class="num">'+E(r.date)+'</td><td>'+E(r.description)+'</td><td>'+E(r.account_name)+'</td><td>'+M(r.debit)+'</td><td>'+M(r.credit)+'</td></tr>'});
@@ -80,12 +83,13 @@ function reportPage(cashbox){
  }
  var totalDr=(NS.report||[]).reduce(function(s,r){return s+N(r.debit)},0),totalCr=(NS.report||[]).reduce(function(s,r){return s+N(r.credit)},0);
  var netProfit=(NS.report||[]).reduce(function(s,r){return s+(r.type==='revenue'?N(r.credit)-N(r.debit):-(N(r.debit)-N(r.credit)))},0);
- var selectReport=cashbox?'':'<select id="report-tab">'+[['trial','ميزان المراجعة'],['pnl','الأرباح والخسائر'],['stock','المخزون'],['statement','كشف حساب طرف']].map(function(t){return '<option value="'+t[0]+'" '+(tab===t[0]?'selected':'')+'>'+t[1]+'</option>'}).join('')+'</select>';
+ var selectReport=cashbox?'':'<select id="report-tab">'+[['trial','ميزان المراجعة'],['pnl','الأرباح والخسائر'],['stock','المخزون'],['statement','كشف حساب طرف'],['account_statement','كشف حساب شامل']].map(function(t){return '<option value="'+t[0]+'" '+(tab===t[0]?'selected':'')+'>'+t[1]+'</option>'}).join('')+'</select>';
  var selectParty=tab==='statement'?'<select id="report-party-type"><option value="customer" '+(NS.reportPartyType!=='supplier'?'selected':'')+'>عميل</option><option value="supplier" '+(NS.reportPartyType==='supplier'?'selected':'')+'>مورد</option></select><select id="report-party">'+opts(NS.data[NS.reportPartyType==='supplier'?'suppliers':'customers'],NS.reportPartyId)+'</select>':'';
+ var selectAccount=tab==='account_statement'?'<select id="report-account" aria-label="الحساب">'+opts(NS.data.accounts,NS.reportAccountId||NS.data.accounts[0]?.id)+'</select>':'';
  var stats=tab==='trial'||tab==='cashbox'?'<div class="three-cols"><div class="stat-mini"><span>إجمالي المدين</span><strong>'+M(totalDr)+'</strong></div><div class="stat-mini"><span>إجمالي الدائن</span><strong>'+M(totalCr)+'</strong></div><div class="stat-mini"><span>الفرق</span><strong>'+M(totalDr-totalCr)+'</strong></div></div>':
  tab==='pnl'?'<div class="stat-mini"><span>صافي الربح / الخسارة</span><strong>'+M(netProfit)+'</strong></div>':'';
  return mkHead(name,cashbox?'أرصدة الصندوق والحسابات البنكية من القيود':'تقارير مالية حقيقية عن الفترة المحددة',B('print','طباعة / PDF','print','btn-subtle'),'reports','violet')+
- '<div class="panel"><div class="page-filter">'+selectReport+selectParty+
+ '<div class="panel"><div class="page-filter">'+selectReport+selectParty+selectAccount+
  '<div class="date-filter"><input type="date" id="filter-from" value="'+E(NS.from)+'"><input type="date" id="filter-to" value="'+E(NS.to)+'"></div>'+
  B('apply-filter','تحديث','search','btn-subtle')+B('export-csv','CSV','download','btn-subtle')+'</div>'+
  '<div class="panel-heading"><div><h2>'+titles[tab]+'</h2><p>الفترة '+(NS.from||'من البداية')+' إلى '+(NS.to||'اليوم')+' — '+periodBranchLabel()+'</p></div></div>'+stats+
