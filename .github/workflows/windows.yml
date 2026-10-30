@@ -1,0 +1,30 @@
+name: Windows EXE
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "clients/windows/**"
+      - ".github/workflows/windows.yml"
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install desktop dependencies
+        working-directory: clients/windows
+        run: npm install --no-audit --no-fund
+      - name: Build Windows installer
+        working-directory: clients/windows
+        run: npm run dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NineSoft-Windows-EXE
+          path: clients/windows/dist/*.exe
+          if-no-files-found: error
+          retention-days: 30
