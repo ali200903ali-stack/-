@@ -55,6 +55,7 @@ print("PASS: authenticated app shell")
 status,output=request("api.php?op=bootstrap")
 data=json.loads(output)
 assert status==200 and data["ok"] and len(data["data"]["accounts"])>=10 and data["data"]["branches"]
+cash_account=next(a["id"] for a in data["data"]["accounts"] if a["code"]=="101")
 print("PASS: bootstrap data and chart of accounts")
 
 status,output=request("api.php?op=dashboard")
@@ -86,7 +87,7 @@ account_id=json.loads(output)["data"]["id"]
 status,output=request("api.php?op=post_journal",{
     "date":"2026-10-29","branch_id":1,"description":"Classification integrity regression",
     "lines":[{"account_id":account_id,"debit":4,"credit":0},
-             {"account_id":next(a["id"] for a in data["data"]["accounts"] if a["code"]=="101"),"debit":0,"credit":4}]
+             {"account_id":cash_account,"debit":0,"credit":4}]
 },csrf)
 assert status==200, (status,output[:400])
 status,output=request("api.php?op=save_account",{
