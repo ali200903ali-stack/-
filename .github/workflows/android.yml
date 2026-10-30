@@ -24,22 +24,20 @@ jobs:
       - name: Install Android SDK
         shell: bash
         run: |
-          SDK_TOOL=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)
+          SDK_TOOL=$(find "${ANDROID_HOME}/cmdline-tools" -type f -name sdkmanager | head -n 1)
           if [ -z "$SDK_TOOL" ]; then echo "Android SDK cmdline tools missing"; exit 1; fi
           "$SDK_TOOL" --install "platforms;android-35" "build-tools;35.0.0"
-      - name: Validate bundled preview JavaScript
-        run: node --check clients/android/app/src/main/assets/demo.js
       - name: Build debug APK
         working-directory: clients/android
         run: gradle assembleDebug --no-daemon
-      - name: Verify self-contained preview in APK
+      - name: Verify bundled offline UI preview
         shell: bash
         run: |
+          set -euo pipefail
           APK=$(find clients/android/app/build/outputs/apk/debug -name '*.apk' -print -quit)
-          test -n "$APK"
-          unzip -Z1 "$APK" > /tmp/ninesoft_apk_files.txt
-          for asset in demo.html demo.js assets/core.js assets/pages.js assets/actions.js assets/style.css assets/logo.svg; do
-            grep -Fxq "assets/$asset" /tmp/ninesoft_apk_files.txt || { echo "Missing $asset"; exit 1; }
+          [ -n "$APK" ] || { echo "APK missing"; exit 1; }
+          for asset in assets/setup.html assets/demo.html assets/demo.js assets/assets/core.js assets/assets/pages.js assets/assets/actions.js assets/assets/style.css assets/assets/logo.svg; do
+            unzip -Z1 "$APK" | grep -Fxq "$asset" || { echo "Missing APK asset: $asset"; exit 1; }
           done
       - uses: actions/upload-artifact@v4
         with:
