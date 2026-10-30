@@ -25,7 +25,7 @@
 
 ## تجربة محلية سريعة
 1. أنشئ قاعدة MySQL جديدة بترميز utf8mb4.
-2. انسخ config.example.php إلى config.local.php (ملف محلي غير مرفوع إلى GitHub)، وضع بيانات MySQL، ونص install_token عشوائي طوله 24 محرفاً على الأقل.
+2. انسخ config.example.php إلى config.local.php (ملف محلي غير مرفوع إلى GitHub)، وضع بيانات MySQL، ونص install_token عشوائي طوله 32 محرفاً على الأقل.
 3. شغّل PHP من جذر المشروع مع خادم محلي مناسب ودعم Apache أو PHP:
    php -S localhost:8000
 4. افتح http://localhost:8000/install.php، أدخل install_token، وسجل مديراً بكلمة مرور قوية. لا تعرض التثبيت على الإنترنت بلا HTTPS.
