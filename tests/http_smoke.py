@@ -93,6 +93,21 @@ data=json.loads(output)
 assert status==200 and data["ok"] and len(data["data"])>=2
 print("PASS: sales listing")
 
+# This is the exact API route used by the Inventory page.
+status,output=request("api.php?op=list&type=inventory")
+assert status==200, (status,output[:500])
+inventory=json.loads(output)["data"]
+item=next((p for p in inventory if p["sku"]=="SMOKE001"),None)
+assert item is not None, "Inventory route did not list the smoke product"
+assert abs(float(item["last_purchase_price"])-8.0)<.01, item
+assert item["last_supplier_name"]=="المورد التجريبي", item
+assert abs(float(item["stock"])-10.0)<.001, item
+print("PASS: inventory screen API and latest supplier/purchase price")
+
+status,output=request("api.php?op=list&type=products")
+assert status==200 and any(p["sku"]=="SMOKE001" for p in json.loads(output)["data"])
+print("PASS: products route remains backward-compatible")
+
 status,output=request("api.php?op=save_party",{"kind":"customers","name":"عميل HTTP","phone":"733123456","address":"Yemen"},csrf)
 data=json.loads(output)
 assert status==200 and data["ok"] and data["data"]["id"]>2
