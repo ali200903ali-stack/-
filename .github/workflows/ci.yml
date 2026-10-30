@@ -1,0 +1,48 @@
+name: PHP accounting checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: ninesoft_test
+          MARIADB_USER: test
+          MARIADB_PASSWORD: test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_NAME: ninesoft_test
+      DB_USER: test
+      DB_PASSWORD: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_mysql, mbstring
+          coverage: none
+      - name: PHP syntax checks
+        run: |
+          find . -type f -name '*.php' -not -path './clients/*' -print0 | xargs -0 -n1 php -l
+      - name: MySQL accounting integration smoke tests
+        run: php tests/accounting_smoke.php
+      - name: JavaScript syntax checks
+        run: |
+          node --check assets/core.js
+          node --check assets/pages.js
+          node --check assets/actions.js
+          node --check clients/windows/main.cjs
+          node --check clients/windows/preload.cjs
