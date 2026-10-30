@@ -124,8 +124,13 @@ try {
                 if (!$code || !$name || !in_array($type,['asset','liability','equity','revenue','expense'],true)) ns_fail('أدخل بيانات الحساب كاملة');
                 $id=ns_int($body['id']??0);
                 if ($id) {
-                    $old=ns_one('SELECT is_system FROM accounts WHERE id=?',[$id]);
+                    $old=ns_one('SELECT type,is_system FROM accounts WHERE id=?',[$id]);
                     if (!$old || $old['is_system']) ns_fail('لا يمكن تعديل الحسابات الأساسية');
+                    // Changing the account classification after posting would rewrite historic
+                    // P&L and balance-sheet figures without any journal entry.
+                    if ($old['type'] !== $type && ns_one('SELECT id FROM journal_lines WHERE account_id=? LIMIT 1',[$id])) {
+                        ns_fail('لا يمكن تغيير نوع حساب يحتوي على قيود مرحّلة؛ أنشئ حساباً جديداً وانقل الرصيد بقيد معتمد',409);
+                    }
                     ns_query('UPDATE accounts SET code=?,name=?,type=? WHERE id=?',[$code,$name,$type,$id]);
                 } else {ns_query('INSERT INTO accounts(code,name,type) VALUES(?,?,?)',[$code,$name,$type]);$id=(int)ns_db()->lastInsertId();}
                 ns_audit($u,'saved','account',$id);
