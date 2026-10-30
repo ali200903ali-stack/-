@@ -69,6 +69,25 @@ assert status==200 and data["ok"] and len(data["data"])>=10
 assert abs(sum(float(row["debit"])-float(row["credit"]) for row in data["data"]))<.01
 print("PASS: balanced trial balance from HTTP API")
 
+# Opening and running balances must work for any chart-of-accounts entry.
+status,output=request("api.php?op=report&type=account_statement&account_id="+str(cash_account)+"&from=2026-10-30&to=2026-10-30")
+assert status==200, (status,output[:400])
+opening_statement=json.loads(output)["data"]
+assert len(opening_statement)==1 and opening_statement[0]["opening"] is True
+assert abs(float(opening_statement[0]["balance"]))>0.01
+print("PASS: opening-balance-only account statement")
+
+status,output=request("api.php?op=report&type=account_statement&account_id="+str(cash_account)+"&from=2026-10-29&to=2026-10-29")
+assert status==200, (status,output[:400])
+full_statement=json.loads(output)["data"]
+assert len(full_statement)>1
+current=float(full_statement[0]["balance"])
+for row in full_statement[1:]:
+    current=round(current+float(row["debit"])-float(row["credit"]),2)
+    assert abs(current-float(row["balance"]))<0.01
+assert abs(current-float(opening_statement[0]["balance"]))<0.01
+print("PASS: general-ledger running balances reconcile with next-day opening")
+
 status,output=request("api.php?op=list&type=sales")
 data=json.loads(output)
 assert status==200 and data["ok"] and len(data["data"])>=2
