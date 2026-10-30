@@ -18,7 +18,7 @@
 انسخ config.example.php إلى config.local.php داخل الخادم فقط. عدّل الحقول:
   db_host, db_port, db_name, db_user, db_pass, app_url, timezone, install_token.
 - app_url يشير إلى عنوانك HTTPS.
-- install_token قيمة عشوائية قوية لا تقل عن 24 حرفاً، وليس المثال الموجود في المستودع.
+- install_token قيمة عشوائية قوية لا تقل عن 32 حرفاً، وليس المثال الموجود في المستودع.
 - لا ترفع config.local.php إلى GitHub مطلقاً؛ هو ضمن .gitignore.
 
 ## 4) تثبيت قاعدة البيانات
