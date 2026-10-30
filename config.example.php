@@ -13,4 +13,5 @@ return [
  'app_url' => 'https://accounting.example.com',
  'timezone' => 'Asia/Aden',
  'session_name' => 'NSSESSID',
+ 'install_token' => 'REPLACE_WITH_A_RANDOM_TOKEN_OF_AT_LEAST_24_CHARACTERS',
 ];
