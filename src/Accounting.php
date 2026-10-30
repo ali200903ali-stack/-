@@ -283,7 +283,11 @@ function ns_post_manual_journal(array $u,array $body): array {
     $lines=[];
     foreach ($input as $l) {
         $accountId=ns_int($l['account_id']??0,1);
-        if (!ns_one('SELECT id FROM accounts WHERE id=? AND active=1',[$accountId])) ns_fail('الحساب غير متوفر');
+        $acc=ns_one('SELECT id,code FROM accounts WHERE id=? AND active=1',[$accountId]);
+        if (!$acc) ns_fail('الحساب غير متوفر');
+        if (in_array($acc['code'],['110','120','201','121','210','400','510'],true)) {
+            ns_fail('لا يمكن ترحيل قيد يدوي مباشرة إلى حساب رقابي أو إيرادات المبيعات أو تكلفة البضاعة دون مستند مصدر');
+        }
         $lines[]=ns_line($accountId,ns_money($l['debit']??0),ns_money($l['credit']??0));
     }
     $pdo=ns_db();$pdo->beginTransaction();
