@@ -239,6 +239,7 @@ function ns_post_invoice(array $u, int $id): array {
             }
             $ledger[]=ns_line(ns_account('400'),$t['net']);
             if ($t['tax']) $ledger[]=ns_line(ns_account('210'),$t['tax']);
+            if ($t['paid'] !== $t['total'] || $d['payment'] !== 'cash') ns_fail('المرتجع يصرف نقداً بالقيمة الكاملة فقط');
             // Return is always a cash refund in v1. No hidden customer-credit adjustment.
             $ledger[]=ns_line(ns_account('101'),0,$t['total']);
             if ($cost) {
@@ -297,6 +298,8 @@ function ns_post_voucher(array $u,array $body): array {
     $desc=ns_text($body['description']??('سند '.($kind==='receipt'?'قبض':'صرف').' - '.$party['name']),500);
     $pdo=ns_db();$pdo->beginTransaction();
     try {
+        // Serialize vouchers against the party row; prevents concurrent over-receipts.
+        ns_one("SELECT id FROM $table WHERE id=? FOR UPDATE",[$partyId]);
         // Serialize voucher payments per party and check receivable/payable balance.
         $partyType=$kind==='receipt'?'customer':'supplier';
         $arAccount=ns_account($kind==='receipt'?'110':'201');
