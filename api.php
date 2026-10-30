@@ -16,13 +16,18 @@ try {
             $email = strtolower(trim((string)($body['email'] ?? '')));
             $pass = (string)($body['password'] ?? '');
             if (strlen($email) > 190 || strlen($pass) > 500) ns_fail('بيانات الدخول غير صحيحة',401);
+            $ip = substr($_SERVER['REMOTE_ADDR'] ?? 'unknown', 0, 50);
+            $attempts = ns_one('SELECT COUNT(*) AS n FROM auth_attempts WHERE ip=? AND attempted_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)',[$ip]);
+            if ($attempts && (int)$attempts['n'] >= 10) ns_fail('محاولات دخول كثيرة. حاول مجدداً بعد 15 دقيقة.',429);
             $u = ns_one('SELECT * FROM users WHERE email=? AND active=1',[$email]);
             // Timing-safe dummy hash to reduce observable account enumeration.
             $hash = $u['password_hash'] ?? '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi';
             if (!password_verify($pass,$hash) || !$u) {
-                usleep(150000);
+                ns_query('INSERT INTO auth_attempts(ip) VALUES(?)',[$ip]);
+                usleep(200000);
                 ns_fail('البريد الإلكتروني أو كلمة المرور غير صحيحة',401);
             }
+            ns_query('DELETE FROM auth_attempts WHERE ip=?',[$ip]);
             session_regenerate_id(true);
             $_SESSION['uid']=(int)$u['id']; $_SESSION['csrf']=bin2hex(random_bytes(32));
             ns_json(['ok'=>true,'csrf'=>$_SESSION['csrf'],'user'=>[
