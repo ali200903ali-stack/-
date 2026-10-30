@@ -1,0 +1,12 @@
+/config.local.php
+/storage/*
+!/storage/.gitkeep
+/node_modules/
+/clients/windows/node_modules/
+/clients/windows/dist/
+/clients/android/.gradle/
+/clients/android/**/build/
+/clients/android/local.properties
+/.env
+*.log
+.DS_Store
