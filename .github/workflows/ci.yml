@@ -39,6 +39,13 @@ jobs:
           find . -type f -name '*.php' -not -path './clients/*' -print0 | xargs -0 -n1 php -l
       - name: MySQL accounting integration smoke tests
         run: php tests/accounting_smoke.php
+      - name: Real HTTP session/API smoke tests
+        run: |
+          php -S 127.0.0.1:8013 -t . >/tmp/ninesoft-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          sleep 2
+          python3 tests/http_smoke.py
       - name: JavaScript syntax checks
         run: |
           node --check assets/core.js
