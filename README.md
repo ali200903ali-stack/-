@@ -15,6 +15,7 @@
 - [Actions: اختبارات PHP ومحاسبة](.github/workflows/ci.yml)
 - [Actions: بناء EXE ويندوز](.github/workflows/windows.yml)
 - [Actions: بناء APK أندرويد](.github/workflows/android.yml)
+- [Actions: حزمة Hostinger ZIP](.github/workflows/hostinger.yml)
 
 ## البنية
 - Web: PHP 8.2+ وPDO MySQL + JavaScript بدون npm أو Composer على الاستضافة.
