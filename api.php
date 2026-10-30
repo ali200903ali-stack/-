@@ -259,12 +259,7 @@ try {
             $branchSql='';
             if ($filterBranch){$branchSql=' AND j.branch_id=?';$params[]=$filterBranch;}
             if ($type === 'trial' || $type === 'pnl' || $type === 'cashbox') {
-                $rows=ns_rows("SELECT a.id,a.code,a.name,a.type,
-                    COALESCE(SUM(jl.debit),0) debit, COALESCE(SUM(jl.credit),0) credit
-                    FROM accounts a LEFT JOIN journal_lines jl ON jl.account_id=a.id
-                    LEFT JOIN journal_entries j ON j.id=jl.journal_id AND j.date BETWEEN ? AND ? $branchSql
-                    GROUP BY a.id,a.code,a.name,a.type ORDER BY a.code",$params);
-                // Correctly restrict joined lines when branch/date did not match.
+                // Restrict entries to selected date/branch before aggregation.
                 $rows=ns_rows("SELECT a.id,a.code,a.name,a.type,
                     COALESCE(t.debit,0) debit,COALESCE(t.credit,0) credit FROM accounts a LEFT JOIN
                     (SELECT jl.account_id,SUM(jl.debit) debit,SUM(jl.credit) credit FROM journal_lines jl
