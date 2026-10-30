@@ -75,9 +75,12 @@ function ns_save_invoice(array $u, array $body): array {
     $lines = $body['lines'] ?? [];
     if (!is_array($lines) || count($lines) < 1 || count($lines) > 100) ns_fail('أضف أصنافاً إلى الفاتورة');
     $clean = [];
+    $seen = [];
     foreach ($lines as $l) {
         if (!is_array($l)) ns_fail('سطر فاتورة غير صالح');
         $pid = ns_int($l['product_id'] ?? 0,1);
+        if (isset($seen[$pid])) ns_fail('ادمج سطور الصنف المكرر في سطر واحد');
+        $seen[$pid] = true;
         $qty = ns_qty($l['qty'] ?? 0);
         $price = ns_dec(ns_money($l['price'] ?? -1));
         $clean[] = ['product_id'=>$pid,'qty'=>$qty,'price'=>$price];
@@ -94,6 +97,7 @@ function ns_save_invoice(array $u, array $body): array {
     if ($kind === 'return') {
         $original = ns_one("SELECT * FROM invoices WHERE id=? AND kind='sale' AND status='posted'",[$reference]);
         if (!$original) ns_fail('يجب اختيار فاتورة مبيعات مرحّلة');
+        if (ns_money($original['paid']) !== ns_money($original['total'])) ns_fail('مرتجع الآجل أو المدفوع جزئياً يحتاج تسوية ذمم غير متاحة في هذا الإصدار');
         if ((int)$original['branch_id'] !== $branch) ns_fail('مرتجع من فرع مختلف غير مدعوم');
         if ((int)$original['customer_id'] !== $party) ns_fail('عميل المرتجع لا يطابق فاتورته');
         if (ns_money($doc['discount']) !== 0 || abs((float)$doc['tax_rate']-(float)$original['tax_rate']) > .001) {
@@ -187,7 +191,7 @@ function ns_post_invoice(array $u, int $id): array {
             foreach ($lines as $l) {
                 $pid=(int)$l['product_id']; $q=(float)$l['qty'];
                 $byProduct[$pid]=($byProduct[$pid]??0)+$q;
-                $c=ns_money($products[$pid]['cost']);
+                $c=(int)$products[$pid]['track_stock'] ? ns_money($products[$pid]['cost']) : 0;
                 $cost+=(int)round($q*$c);
                 ns_query('UPDATE invoice_lines SET cost_at_post=? WHERE id=?',[ns_dec($c),(int)$l['id']]);
             }
@@ -200,26 +204,35 @@ function ns_post_invoice(array $u, int $id): array {
                 $ledger[]=ns_line(ns_account('120'),0,$cost);
             }
         } elseif ($d['kind'] === 'purchase') {
-            $ledger[]=ns_line(ns_account('120'),$t['net']);
             if ($t['tax']) $ledger[]=ns_line(ns_account('121'),$t['tax']);
             if ($paid) $ledger[]=ns_line($account,0,$paid);
             if ($due) $ledger[]=ns_line(ns_account('201'),0,$due,'supplier',(int)$d['supplier_id']);
-            // Weighted-average cost; discount proportionally affects each purchased unit.
+            // Allocate discount proportionally between inventory and non-stock expenses.
             $ratio = $t['gross'] > 0 ? $t['net']/$t['gross'] : 1;
+            $trackedNet=0;
             foreach ($lines as $l) {
                 $p = $products[(int)$l['product_id']]; $q=(float)$l['qty'];
+                if (!(int)$p['track_stock']) {
+                    ns_query('UPDATE invoice_lines SET cost_at_post=0 WHERE id=?',[(int)$l['id']]);
+                    continue;
+                }
                 $oldQ=(float)$p['stock']; $oldCost=ns_money($p['cost']);
                 $unitNew=(int)round(ns_money($l['price'])*$ratio);
                 $avg=(int)round(($oldQ*$oldCost+$q*$unitNew)/max(.001,$oldQ+$q));
+                $trackedNet+=(int)round(ns_money($l['price'])*$q*$ratio);
                 ns_query('UPDATE products SET stock=stock+?,cost=? WHERE id=?',
                     [$q,ns_dec($avg),(int)$p['id']]);
                 ns_query('UPDATE invoice_lines SET cost_at_post=? WHERE id=?',[ns_dec($unitNew),(int)$l['id']]);
                 $products[(int)$p['id']]['stock']=$oldQ+$q;
                 $products[(int)$p['id']]['cost']=ns_dec($avg);
             }
+            $trackedNet=min($trackedNet,$t['net']);
+            if ($trackedNet) $ledger[]=ns_line(ns_account('120'),$trackedNet);
+            if ($t['net']>$trackedNet) $ledger[]=ns_line(ns_account('500'),$t['net']-$trackedNet);
         } else {
             $source = ns_one("SELECT * FROM invoices WHERE id=? AND kind='sale' AND status='posted' FOR UPDATE",[(int)$d['reference_id']]);
             if (!$source || (int)$source['customer_id'] !== (int)$d['customer_id'] || (int)$source['branch_id'] !== (int)$d['branch_id']) ns_fail('مرجع المرتجع غير صالح');
+            if (ns_money($source['paid']) !== ns_money($source['total'])) ns_fail('مرتجع المبيعات الآجلة غير مدعوم دون تسوية ذمم');
             $srcLines = ns_rows('SELECT * FROM invoice_lines WHERE invoice_id=?',[$source['id']]);
             $returns = ns_rows("SELECT il.product_id, SUM(il.qty) qty FROM invoice_lines il JOIN invoices i ON i.id=il.invoice_id WHERE i.kind='return' AND i.status='posted' AND i.reference_id=? GROUP BY il.product_id",[$source['id']]);
             $used = []; foreach ($returns as $r) $used[(int)$r['product_id']] = (float)$r['qty'];
