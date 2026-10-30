@@ -9,7 +9,7 @@
 افتح Hostinger hPanel -> Websites -> Manage -> Databases -> MySQL Databases (قد تختلف أسماء القوائم حسب الإصدار). أنشئ قاعدة بيانات مستخدمها بامتيازات على القاعدة نفسها فقط. سجّل host/port/database/user/password في مدير أسرار خارجي، لا في GitHub.
 
 ## 2) رفع ملفات الويب
-- نزّل محتوى المستودع من https://github.com/ali200903ali-stack/-، أو استنسخه باستخدام اتصال SSH مخوّل.
+- الأسهل: من GitHub -> Actions -> Hostinger Web ZIP، نزّل Artifact باسم NineSoft-Hostinger-web، ثم فك ملف NineSoft-Hostinger.zip وارفع محتوياته إلى document root. بديل ذلك استنسخ محتوى المستودع من https://github.com/ali200903ali-stack/-.
 - ضع جذر تطبيق PHP في document root للنطاق أو subdomain (غالباً public_html)، بحيث توجد index.php وapi.php وschema.sql وbootstrap.php وassets/ في المكان نفسه.
 - أبق .htaccess من المستودع، وتأكد أنه يُقرأ؛ اختبر أن GET /schema.sql و GET /config.example.php و GET /src/Accounting.php تُرجع 403، وإلا حرّك الإعدادات والملفات الحساسة خارج webroot وعدّل المسارات أولاً.
 - مجلد storage/ يجب أن يكون قابلاً للكتابة من PHP، مع منع الوصول المباشر من الويب. عدم إمكانية كتابة ملف القفل لا يمنع التثبيت لكن ليس مرغوباً.
