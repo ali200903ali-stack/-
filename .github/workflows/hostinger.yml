@@ -1,0 +1,38 @@
+name: Hostinger Web ZIP
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "*.php"
+      - ".htaccess"
+      - "schema.sql"
+      - "assets/**"
+      - "src/**"
+      - "storage/**"
+      - "manifest.webmanifest"
+      - "service-worker.js"
+      - "offline.html"
+      - ".github/workflows/hostinger.yml"
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package only Hostinger-ready web server files
+        run: |
+          zip -r NineSoft-Hostinger.zip \
+            .htaccess \
+            index.php install.php api.php bootstrap.php schema.sql config.example.php \
+            manifest.webmanifest service-worker.js offline.html \
+            assets src storage/.gitkeep
+          unzip -l NineSoft-Hostinger.zip
+          ! unzip -Z1 NineSoft-Hostinger.zip | grep -E 'config\.local\.php|clients/|tests/|\.github/'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NineSoft-Hostinger-web
+          path: NineSoft-Hostinger.zip
+          if-no-files-found: error
+          retention-days: 60
